@@ -145,56 +145,56 @@ export default function XPStatus({ stats, pointsBubble, themeColor = "violet", t
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch gap-6">
         {/* Left: User Stats (Level & Streaks) */}
-        <div className="flex items-center gap-3.5">
-          <div className={`relative flex items-center justify-center w-12 h-12 rounded-xl ${activeTheme.iconBg} border ${activeTheme.borderAccent} ${activeTheme.textAccent}`}>
-            <Award className="w-7 h-7" id="user-level-badge" />
-            <span className={`absolute -bottom-1 -right-1 ${activeTheme.bg} text-white text-[10px] font-bold px-1.5 rounded-full border border-slate-800`}>
-              Niv. {stats.level}
+        <div className="flex items-center gap-4 flex-1">
+          <div className={`relative flex items-center justify-center w-14 h-14 rounded-2xl shrink-0 shadow-inner ${activeTheme.iconBg} border ${activeTheme.borderAccent} ${activeTheme.textAccent}`}>
+            <Award className="w-7 h-7" />
+            <span className={`absolute -bottom-1.5 -right-1.5 ${activeTheme.bg} text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-slate-800 shadow-sm leading-none`}>
+              Lvl {stats.level}
             </span>
           </div>
 
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h2 className={`text-base font-bold ${themeBg === "white" ? "text-slate-800" : "text-slate-100"} font-sans tracking-tight`}>Tu Progreso de Enfoque</h2>
-              <span className={`text-xs font-mono ${activeTheme.pillBg} ${activeTheme.textLight} font-medium px-2 py-0.5 rounded-full border ${activeTheme.pillBorder}`}>
+          <div className="flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className={`text-lg font-bold leading-none tracking-tight ${themeBg === "white" ? "text-slate-800" : "text-slate-100"}`}>Tu Progreso</h2>
+              <span className={`text-[10px] uppercase font-mono font-bold leading-none tracking-wider ${activeTheme.pillBg} ${activeTheme.textLight} px-2 py-1 rounded-full border ${activeTheme.pillBorder}`}>
                 Nivel {stats.level}
               </span>
             </div>
-            <p className={`text-xs ${themeBg === "white" ? "text-slate-500" : "text-slate-400"} font-medium`}>
+            <p className={`text-[13px] font-medium leading-tight ${themeBg === "white" ? "text-slate-500" : "text-slate-400"}`}>
               Siguiente nivel en {maxXP - currentXP} XP
             </p>
           </div>
         </div>
 
         {/* Right: Streak & Completed counters */}
-        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 rounded-xl">
-            <Flame className="w-5 h-5 text-amber-400 fill-amber-400/20 animate-bounce" id="daily-streak-flame" />
-            <div className="text-left">
-              <p className="text-[10px] uppercase font-mono text-amber-400 leading-none">Racha Diaria</p>
-              <p className={`text-sm font-bold ${themeBg === "white" ? "text-slate-700" : "text-slate-200"}`}>{stats.streak} {stats.streak === 1 ? "Día" : "Días"}</p>
+        <div className="grid grid-cols-2 gap-3 shrink-0 lg:min-w-[340px]">
+          <div className="flex flex-col justify-center gap-1 bg-amber-500/10 border border-amber-500/20 px-4 py-3 rounded-2xl transition-all">
+            <div className="flex items-center gap-1.5">
+              <Flame className="w-4 h-4 text-amber-400 fill-amber-400/20 animate-bounce" />
+              <p className="text-[10px] font-black uppercase font-mono text-amber-400/80 leading-none tracking-wider">Racha</p>
             </div>
+            <p className={`text-xl font-bold leading-none tracking-tight ${themeBg === "white" ? "text-slate-700" : "text-slate-200"}`}>{stats.streak} <span className="text-sm font-medium opacity-60">días</span></p>
           </div>
 
-          <div className="flex items-center gap-2 bg-sky-500/10 border border-sky-500/20 px-3.5 py-1.5 rounded-xl">
-            <Zap className="w-5 h-5 text-sky-400" id="total-focus-zap" />
-            <div className="text-left">
-              <p className="text-[10px] uppercase font-mono text-sky-400 leading-none">Hitos Logrados</p>
-              <p className={`text-sm font-bold ${themeBg === "white" ? "text-slate-700" : "text-slate-200"}`}>{stats.totalTasksCompleted} Tareas</p>
+          <div className="flex flex-col justify-center gap-1 bg-sky-500/10 border border-sky-500/20 px-4 py-3 rounded-2xl transition-all">
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-sky-400" />
+              <p className="text-[10px] font-black uppercase font-mono text-sky-400/80 leading-none tracking-wider">Hitos</p>
             </div>
+            <p className={`text-xl font-bold leading-none tracking-tight ${themeBg === "white" ? "text-slate-700" : "text-slate-200"}`}>{stats.totalTasksCompleted} <span className="text-sm font-medium opacity-60">fin</span></p>
           </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="mt-4">
-        <div className="flex justify-between items-center text-xs mb-1">
-          <span className={`${themeBg === "white" ? "text-slate-500" : "text-slate-400"} font-medium font-mono`}>{currentXP} XP</span>
-          <span className={`${themeBg === "white" ? "text-slate-500" : "text-slate-400"} font-medium font-mono`}>{maxXP} XP</span>
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-2">
+          <span className={`text-[11px] font-bold uppercase tracking-wider font-mono ${themeBg === "white" ? "text-slate-500" : "text-slate-400"}`}>{currentXP} XP</span>
+          <span className={`text-[11px] font-bold uppercase tracking-wider font-mono ${themeBg === "white" ? "text-slate-500" : "text-slate-400"}`}>{maxXP} XP</span>
         </div>
-        <div className={`w-full ${themeBg === "white" ? "bg-slate-200/70 border-slate-300" : "bg-slate-700/45 border-slate-700/25"} h-3 rounded-full overflow-hidden border p-[2px]`}>
+        <div className={`w-full ${themeBg === "white" ? "bg-slate-200/70 border-slate-300" : "bg-slate-900/60 border-slate-800"} h-2.5 rounded-full overflow-hidden border p-[2px]`}>
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${percent}%` }}

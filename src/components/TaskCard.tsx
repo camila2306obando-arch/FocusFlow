@@ -419,35 +419,36 @@ export default function TaskCard({ task, onToggleComplete, onDelete, onUpdateTas
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden mt-4 pt-1"
+            className="overflow-hidden"
           >
-            {/* Split task loading states */}
-            {isSplitting && (
-              <div className={`py-4 space-y-2 border-t ${themeBg === "white" ? "border-slate-200" : "border-slate-700/30"}`}>
-                <p className="text-xs text-indigo-500 flex items-center gap-2 animate-pulse font-mono">
-                  <Sparkles className="w-4 h-4 text-purple-400 animate-spin" />
-                  Reduciendo carga cognitiva con Inteligencia Artificial...
-                </p>
-                <div className="space-y-1.5">
-                  <div className={`h-4 ${themeBg === "white" ? "bg-slate-100" : "bg-slate-900/40"} rounded animate-pulse w-5/6`} />
-                  <div className={`h-4 ${themeBg === "white" ? "bg-slate-100" : "bg-slate-900/40"} rounded animate-pulse w-3/4`} />
-                  <div className={`h-4 ${themeBg === "white" ? "bg-slate-100" : "bg-slate-900/40"} rounded animate-pulse w-2/3`} />
+            <div className="max-h-[280px] overflow-y-auto custom-scrollbar mt-4 pt-1 pr-1">
+              {/* Split task loading states */}
+              {isSplitting && (
+                <div className={`py-4 space-y-2 border-t ${themeBg === "white" ? "border-slate-200" : "border-slate-700/30"}`}>
+                  <p className="text-xs text-indigo-500 flex items-center gap-2 animate-pulse font-mono">
+                    <Sparkles className="w-4 h-4 text-purple-400 animate-spin" />
+                    Reduciendo carga cognitiva con Inteligencia Artificial...
+                  </p>
+                  <div className="space-y-1.5">
+                    <div className={`h-4 ${themeBg === "white" ? "bg-slate-100" : "bg-slate-900/40"} rounded animate-pulse w-5/6`} />
+                    <div className={`h-4 ${themeBg === "white" ? "bg-slate-100" : "bg-slate-900/40"} rounded animate-pulse w-3/4`} />
+                    <div className={`h-4 ${themeBg === "white" ? "bg-slate-100" : "bg-slate-900/40"} rounded animate-pulse w-2/3`} />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {apiError && (
-              <div className="bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl text-xs text-rose-600 flex items-center gap-2 mb-3">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{apiError}</span>
-              </div>
-            )}
+              {apiError && (
+                <div className="bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl text-xs text-rose-600 flex items-center gap-2 mb-3">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{apiError}</span>
+                </div>
+              )}
 
-            {/* List of subtasks */}
-            <div className={`border-t ${themeBg === "white" ? "border-slate-150" : "border-slate-700/30"} pt-3 space-y-2`}>
-              {task.subtasks.map((step) => (
-                <div
-                  key={step.id}
+              {/* List of subtasks */}
+              <div className={`border-t ${themeBg === "white" ? "border-slate-150" : "border-slate-700/30"} pt-3 space-y-2`}>
+                {task.subtasks.map((step) => (
+                  <div
+                    key={step.id}
                   className={`group/step flex items-center justify-between gap-2.5 text-xs ${themeBg === "white" ? "bg-slate-100/50 hover:bg-slate-100 text-slate-800 border border-slate-150" : "bg-slate-900/20 hover:bg-slate-900/45 text-slate-300 border border-slate-700/10"} px-3 py-2 rounded-xl transition-all`}
                 >
                   <button
@@ -479,7 +480,7 @@ export default function TaskCard({ task, onToggleComplete, onDelete, onUpdateTas
               ))}
 
               {/* Add manual step builder */}
-              <form onSubmit={handleAddManualStep} className="flex gap-2 pt-1.5">
+              <form onSubmit={handleAddManualStep} className="flex gap-2 pt-1.5 pb-2">
                 <input
                   type="text"
                   placeholder="Añadir paso personal..."
@@ -495,6 +496,7 @@ export default function TaskCard({ task, onToggleComplete, onDelete, onUpdateTas
                   <Plus className="w-4 h-4" />
                 </button>
               </form>
+            </div>
             </div>
           </motion.div>
         )}

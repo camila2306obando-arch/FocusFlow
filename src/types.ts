@@ -24,6 +24,8 @@ export interface Task {
   motivation?: string;
   createdAt: string;
   timeBlockHour?: string; // e.g. "09:00", "14:00" etc (to map to time blocking slots)
+  timeBlockDay?: string; // "lun", "mar", "mie", "jue", "vie", "sab", "dom"
+  color?: string; // custom color for the task
 }
 
 export interface UserStats {

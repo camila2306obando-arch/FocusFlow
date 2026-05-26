@@ -7,15 +7,16 @@ import FocusMode from "./components/FocusMode";
 import VisualCalendar from "./components/VisualCalendar";
 import TaskForm from "./components/TaskForm";
 import TaskCard from "./components/TaskCard";
+import NotesView from "./components/NotesView";
 
 import { 
   Sparkles, CheckSquare, Zap, Filter, Heart, Brain, CalendarRange, Clock, Coffee, ListTodo,
   LayoutDashboard, Trophy, Award, Target, BookOpen, Settings, Flame, ShieldAlert,
-  ChevronRight, Calendar, ExternalLink, HelpCircle, Menu, X
+  ChevronRight, Calendar, ExternalLink, HelpCircle, Menu, X, StickyNote
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-type AppView = "dashboard" | "focus" | "calendar" | "achievements";
+type AppView = "dashboard" | "focus" | "calendar" | "achievements" | "notes";
 
 // Unlocked badges config
 interface Badge {
@@ -456,19 +457,25 @@ export default function App() {
     );
   };
 
-  const handleAssignTimeBlock = (taskId: string, hour: string | undefined) => {
+  const handleAssignTimeBlock = (taskId: string, day: string | undefined, hour: string | undefined, color?: string) => {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
-          return { ...t, timeBlockHour: hour };
+          return { ...t, timeBlockDay: day, timeBlockHour: hour, ...(color ? { color } : {}) };
         }
         return t;
       })
     );
   };
 
+  const handleUpdateTaskColor = (taskId: string, color: string) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, color } : t))
+    );
+  };
+
   // Quick tasks directly from calendar slots
-  const handleAddTaskQuick = (title: string, category: Category, priority: Priority, hour: string) => {
+  const handleAddTaskQuick = (title: string, category: Category, priority: Priority, day: string, hour: string, color?: string) => {
     const newTask: Task = {
       id: `task-quick-${Date.now()}`,
       title,
@@ -477,7 +484,9 @@ export default function App() {
       completed: false,
       subtasks: [],
       createdAt: new Date().toISOString().split("T")[0],
-      timeBlockHour: hour
+      timeBlockDay: day,
+      timeBlockHour: hour,
+      color: color
     };
 
     setTasks((prev) => [newTask, ...prev]);
@@ -686,47 +695,51 @@ export default function App() {
       </AnimatePresence>
 
       {/* --- SIDEBAR SYSTEM (Notion / Linear inspired list structure) --- */}
-      <aside className={`fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:static z-50 w-64 md:${isSidebarCollapsed ? "w-20" : "w-64"} ${appBg.sidebarBg} backdrop-blur-md flex flex-col justify-between shrink-0 h-full transition-transform duration-300 md:transition-all`}>
+      <aside
+        className={`fixed md:relative inset-y-0 left-0 z-50 h-full shrink-0 flex flex-col justify-between border-r shadow-2xl md:shadow-none pointer-events-auto transition-all duration-300 ease-in-out
+          ${appBg.sidebarBg} backdrop-blur-xl ${appBg.isLight ? 'border-slate-200/60' : 'border-slate-800/40'}
+          ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          ${isSidebarCollapsed ? "md:w-[88px]" : "md:w-[280px]"} w-[280px]`}
+      >
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* Logo & Brand Header */}
-          <div className={`p-5 border-b shrink-0 ${appBg.isLight ? "border-slate-200 bg-slate-50/50" : "border-slate-800/50 bg-[#070A12]/40"} flex justify-between items-center`}>
-            {!isSidebarCollapsed && (
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8.5 h-8.5 rounded-xl bg-gradient-to-tr ${appTheme.gradientBorder} p-[1.5px] shadow-lg shadow-purple-950/20`}>
-                  <div className={`w-full h-full ${appBg.isLight ? "bg-slate-100" : "bg-[#090D1A]"} rounded-[10px] flex items-center justify-center`}>
-                    <Sparkles className={`w-4.5 h-4.5 ${appTheme.textLight}`} />
-                  </div>
-                </div>
-                <div>
-                  <span className={`font-sans text-base font-extrabold tracking-tight ${appBg.isLight ? "text-slate-850" : "text-white"} flex items-center gap-1 leading-none`}>
-                    Focus<span className={appTheme.textLight}>Flow</span>
-                  </span>
-                  <span className="text-[9px] font-mono uppercase tracking-widest text-[#6366F1] mt-1 block">Compañero</span>
-                </div>
-              </div>
-            )}
-            {isSidebarCollapsed && (
-              <div className={`w-8.5 h-8.5 rounded-xl bg-gradient-to-tr ${appTheme.gradientBorder} p-[1.5px] shadow-lg shadow-purple-950/20 mx-auto`}>
+          <div className={`h-[72px] px-5 border-b shrink-0 ${appBg.isLight ? "border-slate-200 bg-slate-50/50" : "border-slate-800/50 bg-[#070A12]/40"} flex justify-between items-center transition-all duration-300`}>
+            {/* Header Content */}
+            <div className={`flex items-center ${isSidebarCollapsed ? 'mx-auto' : 'gap-3 overflow-hidden'}`}>
+              <div className={`shrink-0 w-8.5 h-8.5 rounded-xl bg-gradient-to-tr ${appTheme.gradientBorder} p-[1.5px] shadow-lg shadow-purple-950/20`}>
                 <div className={`w-full h-full ${appBg.isLight ? "bg-slate-100" : "bg-[#090D1A]"} rounded-[10px] flex items-center justify-center`}>
                   <Sparkles className={`w-4.5 h-4.5 ${appTheme.textLight}`} />
                 </div>
               </div>
-            )}
+              
+              <AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0, x: -10 }}
+                    animate={{ opacity: 1, width: "auto", x: 0 }}
+                    exit={{ opacity: 0, width: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex flex-col whitespace-nowrap"
+                  >
+                    <span className={`font-sans text-base font-extrabold tracking-tight ${appBg.isLight ? "text-slate-850" : "text-white"} flex items-center gap-1 leading-none`}>
+                      Focus<span className={appTheme.textLight}>Flow</span>
+                    </span>
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#6366F1] mt-1 block">Compañero</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             
             <button
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className={`p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-colors focus:outline-none`}
+              className={`hidden md:flex p-1.5 rounded-xl text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-all focus:outline-none absolute -right-3 top-6 bg-slate-900 border border-slate-700 z-10 items-center justify-center`}
               title={isSidebarCollapsed ? "Expandir panel" : "Plegar panel"}
             >
-              {isSidebarCollapsed ? (
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              ) : (
-                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-              )}
+              <ChevronRight className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-300 ${isSidebarCollapsed ? "" : "rotate-180"}`} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar pb-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-6 pt-4">
             {/* User Mini Profile Badge (Duolingo & Finch style stats overview inside side bar) */}
           <div className={`mx-4 my-4 p-3 ${appBg.pillBg} rounded-2xl flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#6366F1] to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-inner shrink-0 relative">
@@ -737,87 +750,141 @@ export default function App() {
             </div>
             {!isSidebarCollapsed && (
               <div className="min-w-0 flex-1">
-                <h4 className={`text-xs font-bold ${appBg.headerText} truncate`}>Héroe del Foco</h4>
+                <h4 className={`text-xs font-bold ${appBg.headerText} truncate`}>Focus Master</h4>
                 <p className={`text-[10px] ${appBg.subtext} font-mono mt-0.5`}>{stats.xp} Total XP</p>
               </div>
             )}
           </div>
 
           {/* Navigation Links */}
-          <nav className="px-3 space-y-1">
+          <nav className="px-3 space-y-2">
             <button
-              onClick={() => setActiveView("dashboard")}
-              className={`w-full flex items-center ${isSidebarCollapsed ? "justify-center px-1 py-3" : "gap-3 px-3.5 py-2.5"} rounded-xl text-xs font-bold font-sans transition-all group ${
+              onClick={() => { setActiveView("dashboard"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center justify-start h-11 px-3.5 rounded-xl text-xs font-bold font-sans transition-all group overflow-hidden ${
                 activeView === "dashboard"
                   ? appTheme.activeTab
                   : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/40"
               }`}
               title="Mi Panel Diario"
             >
-              <LayoutDashboard className={`w-4 h-4 transition-transform group-hover:scale-110 ${activeView === "dashboard" ? "text-white" : appTheme.textLight}`} />
-              {!isSidebarCollapsed && (
-                <>
-                  <span className="flex-1 text-left">Mi Panel Diario</span>
-                  <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-black/20 text-slate-400">
-                    {counts.pending}
-                  </span>
-                </>
-              )}
+              <LayoutDashboard className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${activeView === "dashboard" ? "text-white" : appTheme.textLight}`} />
+              <AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    animate={{ opacity: 1, width: "auto", marginLeft: 12 }}
+                    exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    className="flex-1 flex items-center justify-between whitespace-nowrap overflow-hidden"
+                  >
+                    <span className="text-left">Mi Panel Diario</span>
+                    <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-black/20 text-slate-400 shrink-0">
+                      {counts.pending}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
 
             <button
-              onClick={() => setActiveView("focus")}
-              className={`w-full flex items-center ${isSidebarCollapsed ? "justify-center px-1 py-3" : "gap-3 px-3.5 py-2.5"} rounded-xl text-xs font-bold font-sans transition-all group ${
+              onClick={() => { setActiveView("focus"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center justify-start h-11 px-3.5 rounded-xl text-xs font-bold font-sans transition-all group overflow-hidden ${
                 activeView === "focus"
                   ? appTheme.activeTab
                   : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/40"
               }`}
               title="Cámara de Enfoque"
             >
-              <Clock className={`w-4 h-4 transition-transform group-hover:scale-110 ${activeView === "focus" ? "text-white" : "text-sky-450"}`} />
-              {!isSidebarCollapsed && (
-                <>
-                  <span className="flex-1 text-left">Imán de Enfoque</span>
-                  {stats.totalFocusMinutes > 0 && (
-                    <span className="text-[10px] font-mono text-sky-300 font-semibold">
-                      {stats.totalFocusMinutes}m
-                    </span>
-                  )}
-                </>
-              )}
+              <Clock className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${activeView === "focus" ? "text-white" : "text-sky-450"}`} />
+              <AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    animate={{ opacity: 1, width: "auto", marginLeft: 12 }}
+                    exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    className="flex-1 flex items-center justify-between whitespace-nowrap overflow-hidden"
+                  >
+                    <span className="text-left">Imán de Enfoque</span>
+                    {stats.totalFocusMinutes > 0 && (
+                      <span className="text-[10px] font-mono text-sky-300 font-semibold shrink-0">
+                        {stats.totalFocusMinutes}m
+                      </span>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
 
             <button
-              onClick={() => setActiveView("calendar")}
-              className={`w-full flex items-center ${isSidebarCollapsed ? "justify-center px-1 py-3" : "gap-3 px-3.5 py-2.5"} rounded-xl text-xs font-bold font-sans transition-all group ${
+              onClick={() => { setActiveView("calendar"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center justify-start h-11 px-3.5 rounded-xl text-xs font-bold font-sans transition-all group overflow-hidden ${
                 activeView === "calendar"
                   ? appTheme.activeTab
                   : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/40"
               }`}
               title="Organización por bloking"
             >
-              <CalendarRange className={`w-4 h-4 transition-transform group-hover:scale-110 ${activeView === "calendar" ? "text-white" : "text-emerald-400"}`} />
-              {!isSidebarCollapsed && (
-                <span className="flex-1 text-left">Organización por bloking</span>
-              )}
+              <CalendarRange className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${activeView === "calendar" ? "text-white" : "text-emerald-400"}`} />
+              <AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    animate={{ opacity: 1, width: "auto", marginLeft: 12 }}
+                    exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    className="flex-1 flex items-center whitespace-nowrap overflow-hidden"
+                  >
+                    <span className="text-left">Organización por bloking</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
 
             <button
-              onClick={() => setActiveView("achievements")}
-              className={`w-full flex items-center ${isSidebarCollapsed ? "justify-center px-1 py-3" : "gap-3 px-3.5 py-2.5"} rounded-xl text-xs font-bold font-sans transition-all group ${
+              onClick={() => { setActiveView("achievements"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center justify-start h-11 px-3.5 rounded-xl text-xs font-bold font-sans transition-all group overflow-hidden ${
                 activeView === "achievements"
                   ? appTheme.activeTab
                   : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/40"
               }`}
               title="Logros y Senda"
             >
-              <Trophy className={`w-4 h-4 transition-transform group-hover:scale-110 ${activeView === "achievements" ? "text-white" : "text-amber-400"}`} />
-              {!isSidebarCollapsed && (
-                <>
-                  <span className="flex-1 text-left">Logros y Senda</span>
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                </>
-              )}
+              <Trophy className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${activeView === "achievements" ? "text-white" : "text-amber-400"}`} />
+              <AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    animate={{ opacity: 1, width: "auto", marginLeft: 12 }}
+                    exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    className="flex-1 flex items-center justify-between whitespace-nowrap overflow-hidden"
+                  >
+                    <span className="text-left">Logros y Senda</span>
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+
+            <button
+              onClick={() => { setActiveView("notes"); setIsMobileMenuOpen(false); }}
+              className={`w-full flex items-center justify-start h-11 px-3.5 rounded-xl text-xs font-bold font-sans transition-all group overflow-hidden ${
+                activeView === "notes"
+                  ? appTheme.activeTab
+                  : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/40"
+              }`}
+              title="Bloc de notas"
+            >
+              <StickyNote className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${activeView === "notes" ? "text-white" : "text-yellow-400"}`} />
+              <AnimatePresence>
+                {!isSidebarCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    animate={{ opacity: 1, width: "auto", marginLeft: 12 }}
+                    exit={{ opacity: 0, width: 0, marginLeft: 0 }}
+                    className="flex-1 flex items-center whitespace-nowrap overflow-hidden"
+                  >
+                    <span className="text-left">Bloc de notas</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </button>
           </nav>
 
@@ -950,13 +1017,24 @@ export default function App() {
         </div>
 
         {/* Footer info in sidebar */}
-        <div className={`p-4 border-t border-slate-800/50 bg-[#070A12]/20 hidden md:block ${isSidebarCollapsed ? "text-center" : ""}`}>
-          <div className={`flex items-center gap-2 text-[10px] text-slate-500 font-mono ${isSidebarCollapsed ? "justify-center" : ""}`}>
-            <Flame className="w-3.5 h-3.5 text-amber-500 animate-bounce" />
-            {!isSidebarCollapsed && <span>Racha: {stats.streak} días</span>}
-          </div>
-          {!isSidebarCollapsed && <p className="text-[9px] text-slate-600 font-mono mt-1">v2.1 Stable • React 19</p>}
-        </div>
+        <AnimatePresence>
+          {!isSidebarCollapsed && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-[#070A12]/20 border-t border-slate-800/50 hidden md:block shrink-0"
+            >
+              <div className="p-4 flex flex-col items-start gap-1">
+                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono whitespace-nowrap overflow-hidden">
+                  <Flame className="w-3.5 h-3.5 text-amber-500 animate-bounce shrink-0" />
+                  <span>Racha: {stats.streak} días</span>
+                </div>
+                <p className="text-[9px] text-slate-600 font-mono mt-0.5 whitespace-nowrap overflow-hidden">v2.1 Stable • React 19</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </aside>
 
       {/* --- MAIN PAGE WORKSPACE (Notion minimalism, Linear dark precision) --- */}
@@ -964,49 +1042,47 @@ export default function App() {
         
         {/* Top-Right Ambient Floating Info */}
         <div className="absolute top-6 right-8 hidden xl:flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs bg-slate-900/60 border border-slate-800 p-2 rounded-xl text-slate-400">
-            <Coffee className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-semibold">Batería de Enfoque Estable</span>
-          </div>
+          {/* Removed floaters to improve hierarchy and spacing */}
         </div>
 
         {/* Dynamic header row according to activeView */}
-        <div className="pb-5 mb-6 border-b border-slate-800/40">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <p className="text-[10px] font-mono tracking-widest text-[#6366F1] uppercase font-bold">
+        <div className="pb-6 mb-8 border-b border-slate-800/40">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-col">
+              <p className="text-[11px] font-mono tracking-widest text-[#6366F1] uppercase font-bold mb-1.5 opacity-80">
                 {activeView === "dashboard" && "Dashboard principal"}
                 {activeView === "focus" && "Cámara de inmersión"}
                 {activeView === "calendar" && "Organización por bloking"}
                 {activeView === "achievements" && "Senda de logros interactiva"}
+                {activeView === "notes" && "Bloc de notas"}
               </p>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-100 flex items-center gap-2 mt-1">
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-100 flex items-center gap-2">
                 {activeView === "dashboard" && (
                   <>
                     <span>{greeting}</span>
-                    <span className="text-sm font-normal text-slate-400 self-end ml-1 mb-1 hidden sm:inline">pasito a pasito.</span>
                   </>
                 )}
                 {activeView === "focus" && "Espacio de Hiperenfoque libre"}
                 {activeView === "calendar" && "Agenda Horaria de Bloques"}
-                {activeView === "achievements" && "Tus Hitos y Senda Dopaminérgica"}
+                {activeView === "achievements" && "Tus Hitos y Senda Estelar"}
+                {activeView === "notes" && "Gestor de notas rápidas"}
               </h1>
               {activeView === "dashboard" && (
-                <p className="text-xs sm:text-sm text-slate-400 mt-1 font-medium select-none">{subheading}</p>
+                <p className="text-sm text-slate-400 mt-2 font-medium select-none">{subheading}</p>
               )}
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <span className={`text-[11px] font-mono font-bold bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1 ${appTheme.textLight}`}>
-                <Brain className="w-3.5 h-3.5" />
-                Estación de Enfoque Zen
+            <div className="flex items-center gap-3 mt-4 sm:mt-0 shadow-sm">
+              <span className={`text-[12px] font-mono font-bold bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-2 ${appTheme.textLight}`}>
+                <Brain className="w-4 h-4" />
+                Estación de concentración
               </span>
             </div>
           </div>
         </div>
 
         {/* Global Level Indicator Row on top */}
-        <div className="mb-6">
+        <div className="mb-8">
           <XPStatus stats={stats} pointsBubble={pointsBubble} themeColor={themeColor} themeBg={themeBg} />
         </div>
 
@@ -1203,6 +1279,7 @@ export default function App() {
               <VisualCalendar
                 tasks={tasks}
                 onAssignTimeBlock={handleAssignTimeBlock}
+                onUpdateTaskColor={handleUpdateTaskColor}
                 onAddTaskQuick={handleAddTaskQuick}
                 themeColor={themeColor}
                 themeBg={themeBg}
@@ -1335,6 +1412,19 @@ export default function App() {
               </div>
             </motion.div>
           )}
+
+          {activeView === "notes" && (
+            <motion.div
+              key="notes"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="h-full max-w-5xl mx-auto"
+            >
+              <NotesView themeColor={themeColor} themeBg={themeBg} />
+            </motion.div>
+          )}
         </AnimatePresence>
 
       </main>
@@ -1376,6 +1466,15 @@ export default function App() {
         >
           <Trophy className="w-5 h-5" />
           <span>Senda</span>
+        </button>
+        <button
+          onClick={() => setActiveView("notes")}
+          className={`flex flex-col items-center gap-1 p-2 text-[10px] font-bold ${
+            activeView === "notes" ? "text-violet-500" : "text-slate-500"
+          }`}
+        >
+          <StickyNote className="w-5 h-5" />
+          <span>Notas</span>
         </button>
       </div>
 
