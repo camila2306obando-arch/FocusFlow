@@ -1,0 +1,6 @@
+{
+  "name": "FocusFlow",
+  "description": "Una aplicación de productividad calmante, visual y gamificada especialmente diseñada para personas con TDAH y dificultades de concentración.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
