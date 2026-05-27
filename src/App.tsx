@@ -17,7 +17,7 @@ import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, updateDoc
 import { 
   Sparkles, CheckSquare, Zap, Filter, Heart, Brain, CalendarRange, Clock, Coffee, ListTodo,
   LayoutDashboard, Trophy, Award, Target, BookOpen, Settings, Flame, ShieldAlert,
-  ChevronRight, Calendar, ExternalLink, HelpCircle, Menu, X, StickyNote
+  ChevronRight, Calendar, ExternalLink, HelpCircle, Menu, X, StickyNote, LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -706,7 +706,7 @@ export default function App() {
       <div className={`absolute top-1/4 right-5 w-[600px] h-[600px] bg-purple-600/5 rounded-full blur-[160px] pointer-events-none transition-opacity duration-500 ${appBg.glowOpacity}`} />
       <div className={`absolute bottom-5 left-1/3 w-80 h-80 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none transition-opacity duration-500 ${appBg.glowOpacity}`} />
 
-      {!user && !showWelcome && authChecked ? (
+      {!user && authChecked ? (
         <AuthScreen appBg={appBg} appTheme={appTheme} />
       ) : user ? (
       <>
@@ -1061,35 +1061,30 @@ export default function App() {
         </div>
 
         {/* Footer info in sidebar */}
-        <AnimatePresence>
-          {!isSidebarCollapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-[#070A12]/20 border-t border-slate-800/50 hidden md:flex flex-col shrink-0"
-            >
-              <div className="p-4 flex flex-col items-start gap-1">
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono whitespace-nowrap overflow-hidden">
-                  <Flame className="w-3.5 h-3.5 text-amber-500 animate-bounce shrink-0" />
-                  <span>Racha: {stats.streak} días</span>
-                </div>
-                <div className="flex w-full items-center justify-between mt-2">
-                  <p className="text-[9px] text-slate-600 font-mono whitespace-nowrap overflow-hidden">
-                    {user?.email || "Invitado"}
-                  </p>
-                  <button 
-                    onClick={() => signOut(auth)} 
-                    className="text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 py-1 rounded"
-                    title="Cerrar Sessión"
-                  >
-                    Salir
-                  </button>
-                </div>
+        <div className={`mt-auto bg-[#070A12]/20 border-t border-slate-800/50 flex flex-col shrink-0 ${appBg.isLight ? 'border-slate-200 bg-slate-100/50' : 'border-slate-800/50 bg-[#070A12]/20'}`}>
+          <div className={`p-4 flex flex-col ${isSidebarCollapsed ? 'items-center' : 'items-start'} gap-2`}>
+            {!isSidebarCollapsed && (
+              <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono whitespace-nowrap overflow-hidden">
+                <Flame className="w-3.5 h-3.5 text-amber-500 animate-bounce shrink-0" />
+                <span>Racha: {stats.streak} días</span>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+            <div className={`flex w-full items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+              {!isSidebarCollapsed && (
+                <p className={`text-[9px] font-mono whitespace-nowrap overflow-hidden ${appBg.isLight ? 'text-slate-500' : 'text-slate-600'}`}>
+                  {user?.email || "Invitado"}
+                </p>
+              )}
+              <button 
+                onClick={() => signOut(auth)} 
+                className={`text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded transition-colors ${isSidebarCollapsed ? 'p-2' : 'px-2 py-1'} flex items-center justify-center`}
+                title="Cerrar Sesión"
+              >
+                {isSidebarCollapsed ? <LogOut className="w-4 h-4" /> : "Salir"}
+              </button>
+            </div>
+          </div>
+        </div>
       </aside>
 
       {/* --- MAIN PAGE WORKSPACE (Notion minimalism, Linear dark precision) --- */}
