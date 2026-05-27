@@ -255,30 +255,69 @@ export default function VisualCalendar({ tasks, onAssignTimeBlock, onUpdateTaskC
         </div>
       ) : (
         /* Weekly Calendar View */
-        <div className="overflow-x-auto overflow-y-auto custom-scrollbar pb-4 max-h-[500px]">
-          <div className="min-w-[800px]">
-            {/* Headers */}
-            <div className="grid grid-cols-[50px_repeat(7,_1fr)] gap-2 mb-2 sticky top-0 bg-slate-800/90 z-10 py-2 backdrop-blur-sm">
-                <div className="text-right pr-2 text-[10px] font-mono text-slate-500 uppercase flex flex-col justify-end">Hora</div>
-                {weekDaysArray.map((dayObj) => (
-                    <div key={dayObj.simple} className="text-center pb-2 border-b border-slate-700/50">
-                        <span className="text-xs font-bold font-sans text-slate-200 capitalize block">{dayObj.label}</span>
-                        <span className={`text-[10px] font-mono font-bold ${dayObj.simple === getOffsetDateString(0).simple ? "bg-indigo-500 text-white px-1.5 py-0.5 rounded-full" : "text-slate-500"}`}>{dayObj.dayNum}</span>
+        <div className="flex flex-col gap-4">
+          {/* Carga Semanal (Workload Overview) */}
+          <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/30">
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-indigo-400" /> Carga Semanal
+            </h3>
+            <div className="grid grid-cols-7 gap-2">
+              {weekDaysArray.map(dayObj => {
+                const dayTasksCount = tasks.filter(t => t.timeBlockDay === dayObj.simple && !t.completed).length;
+                // max logic for simple visualization, assume 16 slots is max
+                const percentage = Math.min(Math.round((dayTasksCount / 10) * 100), 100);
+                
+                let intensityClass = "bg-slate-800 border-slate-700";
+                if (dayTasksCount > 0 && dayTasksCount <= 3) intensityClass = "bg-indigo-500/20 border-indigo-500/30 text-indigo-200";
+                else if (dayTasksCount > 3 && dayTasksCount <= 6) intensityClass = "bg-indigo-500/40 border-indigo-500/50 text-indigo-100";
+                else if (dayTasksCount > 6) intensityClass = "bg-indigo-600 border-indigo-500 text-white shadow-[0_0_10px_rgba(79,70,229,0.3)]";
+                
+                return (
+                  <div key={`load-${dayObj.simple}`} className="flex flex-col items-center gap-1.5">
+                    <span className="text-[9px] font-mono uppercase text-slate-500">{dayObj.label}</span>
+                    <div className={`w-full h-8 rounded-md flex items-center justify-center border text-xs font-bold transition-all ${intensityClass}`} title={`${dayTasksCount} bloques`}>
+                      {dayTasksCount > 0 ? dayTasksCount : 0}
                     </div>
-                ))}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Scroll Hint for Mobile */}
+          <div className="text-[10px] text-slate-500 mb-2 italic md:hidden flex justify-end px-2">
+            Desliza para ver Sábado y Domingo <ChevronRight className="w-3 h-3 ml-1" />
+          </div>
+
+          <div className="overflow-x-auto overflow-y-auto custom-scrollbar pb-4 max-h-[420px]">
+            <div className="min-w-[700px] lg:min-w-full px-1">
+            {/* Headers */}
+            <div className="grid grid-cols-[50px_repeat(7,_1fr)] gap-1 md:gap-2 mb-2 sticky top-0 bg-slate-800/90 z-10 py-2 backdrop-blur-sm">
+                <div className="text-right pr-2 text-[10px] font-mono text-slate-500 uppercase flex flex-col justify-end">Hora</div>
+                {weekDaysArray.map((dayObj) => {
+                    const isWeekend = dayObj.date.getDay() === 0 || dayObj.date.getDay() === 6;
+                    return (
+                    <div key={dayObj.simple} className="text-center pb-2 border-b border-slate-700/50">
+                        <span className={`text-[11px] md:text-xs font-bold font-sans capitalize block truncate ${isWeekend ? 'text-indigo-300' : 'text-slate-200'}`}>
+                          {dayObj.label}
+                        </span>
+                        <span className={`text-[10px] font-mono font-bold mt-0.5 inline-block ${dayObj.simple === getOffsetDateString(0).simple ? "bg-indigo-500 text-white px-2 py-0.5 rounded-full" : isWeekend ? "text-indigo-400/70" : "text-slate-500"}`}>{dayObj.dayNum}</span>
+                    </div>
+                )})}
             </div>
             
             {/* Hour Rows */}
-            <div className="space-y-2">
+            <div className="space-y-1.5 md:space-y-2">
               {HOURS_SLOTS.map(hour => (
-                <div key={hour} className="grid grid-cols-[50px_repeat(7,_1fr)] gap-2 group">
+                <div key={hour} className="grid grid-cols-[50px_repeat(7,_1fr)] gap-1 md:gap-2 group">
                     <div className="text-right pr-2 text-[10px] font-mono text-indigo-400/70 py-2 border-r border-slate-700/30 self-stretch flex items-center justify-end">
                       {hour}
                     </div>
                     {weekDaysArray.map((dayObj) => {
+                      const isWeekend = dayObj.date.getDay() === 0 || dayObj.date.getDay() === 6;
                       const slotTasks = getTasksInSlot(hour, dayObj.simple);
                       return (
-                          <div key={`${dayObj.simple}-${hour}`} className="p-1 min-h-[60px] bg-slate-900/40 border border-slate-700/30 rounded-lg lg:hover:border-slate-700/70 transition-colors flex flex-col gap-1.5 relative group/slot shadow-inner">
+                          <div key={`${dayObj.simple}-${hour}`} className={`p-1 min-h-[50px] md:min-h-[60px] border rounded-lg lg:hover:border-slate-600/80 transition-colors flex flex-col gap-1.5 relative group/slot shadow-inner ${isWeekend ? "bg-slate-800/60 border-slate-700/40" : "bg-slate-900/40 border-slate-700/30"}`}>
                             {slotTasks.map(task => {
                                 const style = CATEGORY_STYLES[task.category];
                                 return (
@@ -310,6 +349,7 @@ export default function VisualCalendar({ tasks, onAssignTimeBlock, onUpdateTaskC
               ))}
             </div>
           </div>
+        </div>
         </div>
       )}
 

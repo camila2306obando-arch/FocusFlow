@@ -8,6 +8,11 @@ import VisualCalendar from "./components/VisualCalendar";
 import TaskForm from "./components/TaskForm";
 import TaskCard from "./components/TaskCard";
 import NotesView from "./components/NotesView";
+import AuthScreen from "./components/AuthScreen";
+
+import { auth, db } from "./firebase";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 
 import { 
   Sparkles, CheckSquare, Zap, Filter, Heart, Brain, CalendarRange, Clock, Coffee, ListTodo,
@@ -277,6 +282,8 @@ const BG_CONFIG = {
 };
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [activeView, setActiveView] = useState<AppView>("dashboard");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stats, setStats] = useState<UserStats>({
@@ -352,57 +359,53 @@ export default function App() {
     }
   }, [showWelcome]);
 
-  // Load from LocalStorage
+  // Firebase Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthChecked(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Hydrate Stats from LocalStorage
   useEffect(() => {
     try {
-      const storedTasks = localStorage.getItem("focusflow_tasks");
       const storedStats = localStorage.getItem("focusflow_stats");
-
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks));
-      } else {
-        // Hydrate default onboarding templates for ADHD users to start immediately without a blank slate!
-        const defaultTasks: Task[] = [
-          {
-            id: "onboarding-1",
-            title: "Configurar mi primer bloque de enfoque en FocusFlow",
-            category: "Personal",
-            priority: "Alta",
-            completed: false,
-            createdAt: new Date().toISOString().split("T")[0],
-            subtasks: [
-              { id: "onb-step-1", title: "Registrar una nueva tarea usando el formulario (2 min)", completed: false },
-              { id: "onb-step-2", title: "Presionar el botón de 'Iniciar sesión de enfoque' para activar el drone relajante (1 min)", completed: false }
-            ],
-            motivation: "La mejor manera de ganarle a la postergación es dar un paso de un minuto sin juzgarse a uno mismo.",
-            timeBlockHour: "09:00"
-          },
-          {
-            id: "onboarding-2",
-            title: "Beber un vaso de agua fresca y estirarme",
-            category: "Salud",
-            priority: "Media",
-            completed: false,
-            createdAt: new Date().toISOString().split("T")[0],
-            subtasks: []
-          }
-        ];
-        setTasks(defaultTasks);
-      }
-
       if (storedStats) {
         setStats(JSON.parse(storedStats));
       }
     } catch (e) {
-      console.error("Error loading local storage data", e);
+      console.error("Error loading stats from local storage data", e);
     }
   }, []);
 
-  // Save changes to LocalStorage
+  // Load Tasks from Firestore
   useEffect(() => {
-    localStorage.setItem("focusflow_tasks", JSON.stringify(tasks));
-  }, [tasks]);
+    if (!user) {
+      setTasks([]);
+      return;
+    }
 
+    const tasksRef = collection(db, "tareas");
+    const q = query(tasksRef, where("uid", "==", user.uid));
+    
+    // Real-time synchronization
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const dbTasks: Task[] = [];
+      snapshot.forEach((doc) => {
+        dbTasks.push(doc.data() as Task);
+      });
+      // Sort tasks sequentially by creation if needed, currently leaving them as they come
+      setTasks(dbTasks);
+    }, (error) => {
+      console.error("Error fetching realtime tasks:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Save Stats changes to LocalStorage
   useEffect(() => {
     localStorage.setItem("focusflow_stats", JSON.stringify(stats));
   }, [stats]);
@@ -411,7 +414,8 @@ export default function App() {
   const { greeting, subheading } = getFriendlyGreeting();
 
   // Task events
-  const handleAddTask = (title: string, category: Category, priority: Priority, deadline?: string) => {
+  const handleAddTask = async (title: string, category: Category, priority: Priority, deadline?: string) => {
+    if (!user) return;
     const newTask: Task = {
       id: `task-${Date.now()}-${Math.random()}`,
       title,
@@ -423,14 +427,29 @@ export default function App() {
       createdAt: new Date().toISOString().split("T")[0]
     };
 
-    setTasks((prev) => [newTask, ...prev]);
-    triggerAwardXP(15, "¡Planificado!"); // Dopamine hit for registering a goal
+    try {
+      await setDoc(doc(db, "tareas", newTask.id), {
+        uid: user.uid,
+        ...newTask
+      });
+      triggerAwardXP(15, "¡Planificado!"); // Dopamine hit for registering a goal
+    } catch (error) {
+      console.error("Error adding task:", error);
+    }
   };
 
-  const handleToggleComplete = (id: string) => {
-    setTasks((prev) => {
-      const task = prev.find((t) => t.id === id);
-      if (task && !task.completed) {
+  const handleToggleComplete = async (id: string) => {
+    if (!user) return;
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    try {
+      const newCompleted = !task.completed;
+      await updateDoc(doc(db, "tareas", id), {
+        completed: newCompleted
+      });
+
+      if (newCompleted) {
         triggerAwardXP(15, "¡Buen trabajo!"); // Reward task completion with 15 XP
         // Update stats
         setStats((curr) => ({
@@ -438,44 +457,58 @@ export default function App() {
           totalTasksCompleted: curr.totalTasksCompleted + 1,
         }));
       }
-      return prev.filter((t) => t.id !== id);
-    });
+    } catch (e) {
+      console.error("Error updating task", e);
+    }
   };
 
-  const handleDeleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTask = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, "tareas", id));
+    } catch (e) {
+      console.error("Error deleting task", e);
+    }
   };
 
-  const handleUpdateTask = (id: string, updatedFields: Partial<Task>) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          return { ...t, ...updatedFields };
-        }
-        return t;
-      })
-    );
+  const handleUpdateTask = async (id: string, updatedFields: Partial<Task>) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "tareas", id), updatedFields);
+    } catch (e) {
+      console.error("Error updating fields", e);
+    }
   };
 
-  const handleAssignTimeBlock = (taskId: string, day: string | undefined, hour: string | undefined, color?: string) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          return { ...t, timeBlockDay: day, timeBlockHour: hour, ...(color ? { color } : {}) };
-        }
-        return t;
-      })
-    );
+  const handleAssignTimeBlock = async (taskId: string, day: string | undefined, hour: string | undefined, color?: string) => {
+    if (!user) return;
+    const updatePayload: any = {
+      timeBlockDay: day === undefined ? null : day,
+      timeBlockHour: hour === undefined ? null : hour
+    };
+    if (color !== undefined) {
+      updatePayload.color = color;
+    }
+    
+    try {
+      await updateDoc(doc(db, "tareas", taskId), updatePayload);
+    } catch (e) {
+      console.error("Error updating time block", e);
+    }
   };
 
-  const handleUpdateTaskColor = (taskId: string, color: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, color } : t))
-    );
+  const handleUpdateTaskColor = async (taskId: string, color: string) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, "tareas", taskId), { color });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Quick tasks directly from calendar slots
-  const handleAddTaskQuick = (title: string, category: Category, priority: Priority, day: string, hour: string, color?: string) => {
+  const handleAddTaskQuick = async (title: string, category: Category, priority: Priority, day: string, hour: string, color?: string) => {
+    if (!user) return;
     const newTask: Task = {
       id: `task-quick-${Date.now()}`,
       title,
@@ -489,8 +522,15 @@ export default function App() {
       color: color
     };
 
-    setTasks((prev) => [newTask, ...prev]);
-    triggerAwardXP(10, "Bloqueado");
+    try {
+      await setDoc(doc(db, "tareas", newTask.id), {
+        uid: user.uid,
+        ...newTask
+      });
+      triggerAwardXP(10, "Bloqueado");
+    } catch (error) {
+      console.error("Error adding quick task:", error);
+    }
   };
 
   const handleFocusTaskAction = (taskId: string) => {
@@ -666,6 +706,10 @@ export default function App() {
       <div className={`absolute top-1/4 right-5 w-[600px] h-[600px] bg-purple-600/5 rounded-full blur-[160px] pointer-events-none transition-opacity duration-500 ${appBg.glowOpacity}`} />
       <div className={`absolute bottom-5 left-1/3 w-80 h-80 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none transition-opacity duration-500 ${appBg.glowOpacity}`} />
 
+      {!user && !showWelcome && authChecked ? (
+        <AuthScreen appBg={appBg} appTheme={appTheme} />
+      ) : user ? (
+      <>
       {/* Mobile Top Header */}
       <header className={`md:hidden flex items-center justify-between p-4 border-b z-40 shrink-0 ${appBg.sidebarBg} ${appBg.isLight ? "border-slate-200" : "border-slate-800/50"} backdrop-blur-md`}>
         <div className="flex items-center gap-2.5">
@@ -1023,14 +1067,25 @@ export default function App() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-[#070A12]/20 border-t border-slate-800/50 hidden md:block shrink-0"
+              className="overflow-hidden bg-[#070A12]/20 border-t border-slate-800/50 hidden md:flex flex-col shrink-0"
             >
               <div className="p-4 flex flex-col items-start gap-1">
                 <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono whitespace-nowrap overflow-hidden">
                   <Flame className="w-3.5 h-3.5 text-amber-500 animate-bounce shrink-0" />
                   <span>Racha: {stats.streak} días</span>
                 </div>
-                <p className="text-[9px] text-slate-600 font-mono mt-0.5 whitespace-nowrap overflow-hidden">v2.1 Stable • React 19</p>
+                <div className="flex w-full items-center justify-between mt-2">
+                  <p className="text-[9px] text-slate-600 font-mono whitespace-nowrap overflow-hidden">
+                    {user?.email || "Invitado"}
+                  </p>
+                  <button 
+                    onClick={() => signOut(auth)} 
+                    className="text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 py-1 rounded"
+                    title="Cerrar Sessión"
+                  >
+                    Salir
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1483,6 +1538,8 @@ export default function App() {
         <span>Flow Mode: Activo</span>
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
       </div>
+      </>
+      ) : null}
 
     </div>
   );
